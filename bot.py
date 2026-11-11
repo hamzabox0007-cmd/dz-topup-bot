@@ -14,7 +14,7 @@ ADMIN_ID = "8528044992"
 # قاعدة بيانات مؤقتة لتخزين بيانات ومحافظ الزبائن
 user_data = {}
 
-CCP_INFO = "📌 **رقم حساب CCP الخاص بك (لاستقبال الأموال الحقيقية):**\n`00799999001922271613`\n👤 **الاسم:** خدمة الوساطة الرقمية"
+CCP_INFO = "📌 **رقم حساب CCP (لاستقبال الأموال الحقيقية):**\n`00799999001922271613`\n👤 **الاسم:** خدمة الوساطة الرقمية"
 BINANCE_INFO = "📌 **محفظة بينانس (USDT):**\n`TM72iNjNBDRvUE46KCrK8z1d2PSeaWrVGT`"
 SUPPORT_CONTACT = "💬 **للدعم والإدارة:** @hamzabox007-cmd"
 
@@ -23,7 +23,7 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "Al-Annabi Internal Ad Network is active 24/7!"
+    return "Professional Digital Brokerage Bot is active 24/7!"
 
 def run_web():
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
@@ -34,41 +34,49 @@ def get_user(user_id):
     if user_id not in user_data:
         user_data[user_id] = {
             "balance": 0.0,       # الرصيد المالي بالدج
-            "points": 0.0,        # النقاط المتراكمة
-            "ads_watched": 0,     # عدد الإعلانات المشاهدة اليوم
+            "mining_coins": 0.0,  # رصيد العملة الرقمية المعدنة
+            "referrals": 0,       # عدد الأصدقاء المدعوين
             "last_date": today    # لتصفير العداد يومياً
         }
-    
-    if user_data[user_id]["last_date"] != today:
-        user_data[user_id]["ads_watched"] = 0
-        user_data[user_id]["last_date"] = today
-        
     return user_data[user_id]
 
-# القائمة الرئيسية والترحيب
+# القائمة الرئيسية والترحيب مع دعم نظام الإحالة (Referred by)
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     user = message.from_user
     u = get_user(user.id)
     
+    # فحص نظام الدعوات إذا دخل عبر رابط صديقه
+    args = message.text.split()
+    if len(args) > 1 and args[1].startswith("ref_"):
+        try:
+            referrer_id = int(args[1].replace("ref_", ""))
+            if referrer_id != user.id and referrer_id in user_data:
+                # إعطاء مكافأة لمن دعا صديقه إن لم يتم احتسابه مسبقاً
+                user_data[referrer_id]["mining_coins"] += 20.0
+                bot.send_message(referrer_id, f"🎉 **مرحباً! انضم صديق جديد عبر رابط الدعوة الخاص بك.**\n➕ تمت إضافة `20 عملة معدنية` إلى رصيدك التعديني!", parse_mode="Markdown")
+        except:
+            pass
+
     markup = telebot.types.InlineKeyboardMarkup(row_width=2)
-    btn_wallet = telebot.types.InlineKeyboardButton(f"👛 محفظتي ({u['balance']} دج)", callback_data='wallet')
-    btn_earn = telebot.types.InlineKeyboardButton(f"📺 إعلانات شبكة العنابي ({u['ads_watched']}/10)", callback_data='earn_ads')
-    btn_convert = telebot.types.InlineKeyboardButton("🔄 تحويل النقاط لرصيد", callback_data='convert_points')
+    btn_wallet = telebot.types.InlineKeyboardButton(f"👛 المحفظة ({u['balance']} دج)", callback_data='wallet')
+    btn_mining = telebot.types.InlineKeyboardButton(f"⛏️ تعدين العملة الرقمية", callback_data='mining_menu')
+    btn_ref = telebot.types.InlineKeyboardButton(f"👥 ادعُ أصدقائك واربح", callback_data='referral_menu')
+    btn_convert = telebot.types.InlineKeyboardButton("🔄 تحويل العملة لنقود حقيقية", callback_data='convert_coins')
     btn_games = telebot.types.InlineKeyboardButton("🎮 شحن Free Fire", callback_data='games')
     btn_deposit = telebot.types.InlineKeyboardButton("💳 معلومات الدفع (CCP)", callback_data='deposit')
     btn_support = telebot.types.InlineKeyboardButton("📞 الدعم الفني", callback_data='support')
     
-    markup.add(btn_wallet, btn_earn, btn_convert, btn_games, btn_deposit, btn_support)
+    markup.add(btn_wallet, btn_mining, btn_ref, btn_convert, btn_games, btn_deposit, btn_support)
     
     welcome_text = (
-        f"🔥 **أهلاً بك يا {user.first_name} في منصة العنابي للوساطة الرقمية** 🚀\n\n"
-        "💎 *تفاعل مع شبكة إعلانات العنابي الداخلية يومياً، اجمع النقاط، حولها إلى رصيد مجاني، وشحن ألعابك بكل أمان!*\n\n"
+        f"🔥 **أهلاً بك يا {user.first_name} في المنصة الرقمية المعتمدة للوساطة والشحن** 🚀\n\n"
+        "⛏️ *ابدأ الآن في تعدين العملة الرقمية مجاناً، ادعُ أصدقائك لزيادة أرباحك، وحولها مباشرة إلى أموال حقيقية لشحن ألعابك ودفعاتك!*\n\n"
         "👇 **اختر ما تحتاجه من القائمة أدناه:**"
     )
     bot.send_message(message.chat.id, welcome_text, reply_markup=markup, parse_mode="Markdown")
 
-# إدارة الأزرار التفاعلية بدقة
+# إدارة الأزرار التفاعلية بدقة واحترافية
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
     user_id = call.from_user.id
@@ -76,81 +84,75 @@ def callback_query(call):
     
     if call.data == 'wallet':
         text = (
-            f"👛 **محفظتك الشخصية الحالية:**\n\n"
-            f"💰 **رصيدك المالي:** `{u['balance']} دج`\n"
-            f"⭐ **نقاطك المجمعة:** `{u['points']} نقطة`\n\n"
-            f"💡 *كل 500 نقطة يمكنك تحويلها إلى 100 دج رصيد حقيقي في محفظتك!*"
+            f"👛 **محفظتك الشخصية:**\n\n"
+            f"💰 **الرصيد النقدي القابل للشحن:** `{u['balance']} دج`\n"
+            f"🪙 **رصيد عملة التعدين:** `{u['mining_coins']} عملة`\n\n"
+            f"💡 *كل 100 عملة معدنة = 50 دج رصيد نقدي في محفظتك!*"
         )
         markup = telebot.types.InlineKeyboardMarkup()
         markup.add(telebot.types.InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu'))
         bot.answer_callback_query(call.id)
         bot.send_message(call.message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
         
-    elif call.data == 'earn_ads':
-        remaining = 10 - u["ads_watched"]
+    elif call.data == 'mining_menu':
         text = (
-            f"📺 **قسم إعلانات شبكة العنابي الداخلية:**\n\n"
-            f"• الإعلانات المشاهدة اليوم: `{u['ads_watched']} / 10`\n"
-            f"• المتبقي لك اليوم: `{remaining} إعلانات`\n"
-            f"• الربح لكل إعلان: `50 نقطة`\n\n"
-            f"📢 **الإعلان الترويجي النشط حالياً:**\n"
-            f"━━━━━━━━━━━━━━━━━━━━━\n"
-            f"🌟 *عرض خاص من العنابي: اشحن جواهر Free Fire بأسرع وأرخص الأسعار في الجزائر عبر شبكتنا المعتمدة! تابعه الآن واكسب نقاطك.*\n"
-            f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"👇 اقرأ الإعلان ثم اضغط زر التأكيد لاكتساب نقاطك فوراً:"
+            f"⛏️ **قسم تعدين العملة الرقمية للمنصة:**\n\n"
+            f"• رصيدك الحالي من العملة: `{u['mining_coins']} عملة`\n"
+            f"• أرباح التعدين لكل نقرة: `10 عملات رقمية`\n\n"
+            f"👇 اضغط على زر 'بدء دورة التعدين' لجمع العملات الآن:"
         )
         markup = telebot.types.InlineKeyboardMarkup(row_width=1)
-        if remaining > 0:
-            markup.add(telebot.types.InlineKeyboardButton("✅ تأكيد قراءة الإعلان واكتساب 50 نقطة", callback_data='confirm_ad'))
-        else:
-            markup.add(telebot.types.InlineKeyboardButton("⏳ لقد استهلكت الـ 10 إعلانات اليومية", callback_data='limit_reached'))
-            
+        markup.add(telebot.types.InlineKeyboardButton("⛏️ بدء دورة تعدين جديدة (+10 عملات)", callback_data='do_mining'))
         markup.add(telebot.types.InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu'))
         bot.answer_callback_query(call.id)
         bot.send_message(call.message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
         
-    elif call.data == 'confirm_ad':
-        if u["ads_watched"] < 10:
-            u["ads_watched"] += 1
-            u["points"] += 50
-            remaining = 10 - u["ads_watched"]
-            
-            bot.answer_callback_query(call.id, "🎉 كفو! تمت إضافة 50 نقطة إلى محفظتك بنجاح.", show_alert=True)
-            
-            text = (
-                f"✅ **تم تأكيد الإعلان بنجاح!**\n"
-                f"⭐ نقاطك الحالية: `{u['points']} نقطة`\n"
-                f"📊 المتبقي لك اليوم: `{remaining} إعلانات`"
-            )
-            markup = telebot.types.InlineKeyboardMarkup(row_width=1)
-            if remaining > 0:
-                markup.add(telebot.types.InlineKeyboardButton("📺 مشاهدة إعلان آخر (+50 نقطة)", callback_data='earn_ads'))
-            markup.add(telebot.types.InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu'))
-            bot.send_message(call.message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
-        else:
-            bot.answer_callback_query(call.id, "⚠️ لقد وصلت لحد الإعلانات الأقصى اليوم (10/10). عُد غداً!", show_alert=True)
-            
-    elif call.data == 'limit_reached':
-        bot.answer_callback_query(call.id, "⚠️ أنهيت إعلانات اليوم. انتظر حتى الغد!", show_alert=True)
+    elif call.data == 'do_mining':
+        u["mining_coins"] += 10.0
+        bot.answer_callback_query(call.id, "🎉 ممتاز! تمت إضافة 10 عملات معدنية لمحفظتك بنجاح.", show_alert=True)
         
-    elif call.data == 'convert_points':
-        if u["points"] >= 500:
-            u["points"] -= 500
-            u["balance"] += 100.0
+        text = (
+            f"✅ **تمت عملية التعدين بنجاح!**\n"
+            f"🪙 رصيدك التعديني الحالي: `{u['mining_coins']} عملة`\n\n"
+            f"استمر في التعدين أو ادعُ أصدقائك لتسريع أرباحك!"
+        )
+        markup = telebot.types.InlineKeyboardMarkup(row_width=1)
+        markup.add(telebot.types.InlineKeyboardButton("⛏️ تعدين مرة أخرى", callback_data='do_mining'))
+        markup.add(telebot.types.InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu'))
+        bot.send_message(call.message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
+        
+    elif call.data == 'referral_menu':
+        ref_link = f"https://t.me/dz_topup2026_bot?start=ref_{user_id}"
+        text = (
+            f"👥 **برنامج دعوة الأصدقاء (Affiliate):**\n\n"
+            f"شارك رابط الدعوة الخاص بك مع أصدقائك وفي المجموعات:\n"
+            f"`{ref_link}`\n\n"
+            f"🎁 **المكافأة:** كل صديق يدخل من طرفك يمنحك `20 عملة معدنية` فورية في رصيد التعدين الخاص بك!"
+        )
+        markup = telebot.types.InlineKeyboardMarkup()
+        markup.add(telebot.types.InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu'))
+        bot.answer_callback_query(call.id)
+        bot.send_message(call.message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
+        
+    elif call.data == 'convert_coins':
+        if u["mining_coins"] >= 100:
+            # كل 100 عملة تتحول إلى 50 دج
+            u["mining_coins"] -= 100.0
+            u["balance"] += 50.0
             text = (
                 f"🎉 **تم التحويل بنجاح تام!**\n"
-                f"🔄 خصمنا `500 نقطة` وأضفنا `100 دج` إلى رصيدك المالي.\n"
-                f"💰 رصيدك المالي الجديد: `{u['balance']} دج`"
+                f"🔄 خصمنا `100 عملة` وأضفنا `50 دج` إلى رصيدك النقدي.\n"
+                f"💰 رصيدك النقدي الجديد: `{u['balance']} دج`"
             )
-            bot.answer_callback_query(call.id, "تم التحويل إلى رصيد بنجاح! 🚀")
+            bot.answer_callback_query(call.id, "تم التحويل إلى نقود بنجاح! 🚀")
         else:
-            needed = 500 - u["points"]
+            needed = 100 - u["mining_coins"]
             text = (
-                f"⚠️ **عذراً، نقاطك غير كافية للتحويل.**\n"
-                f"رصيدك الحالي: `{u['points']} نقطة`\n"
-                f"تحتاج إلى `500 نقطة` على الأقل (متبقي لك {needed} نقطة)."
+                f"⚠️ **عذراً، رصيدك المعدن غير كافٍ للتحويل.**\n"
+                f"رصيدك الحالي: `{u['mining_coins']} عملة`\n"
+                f"تحتاج إلى `100 عملة` على الأقل للتحويل (متبقي لك {needed} عملة)."
             )
-            bot.answer_callback_query(call.id, "النقاط غير كافية", show_alert=True)
+            bot.answer_callback_query(call.id, "الرصيد غير كافٍ", show_alert=True)
         
         markup = telebot.types.InlineKeyboardMarkup()
         markup.add(telebot.types.InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu'))
@@ -161,7 +163,7 @@ def callback_query(call):
             "🎮 **قسم شحن Free Fire:**\n\n"
             "• 100 جوهرة\n"
             "• 310 جوهرة (الأكثر طلباً 🔥)\n\n"
-            "🛒 للدفع من رصيد محفظتك المباشر أو عبر CCP، تواصل معنا."
+            "🛒 يمكنك الشحن مباشرة باستخدام رصيد محفظتك النقدي أو عبر الدفع المباشر."
         )
         markup = telebot.types.InlineKeyboardMarkup()
         markup.add(telebot.types.InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu'))
@@ -169,14 +171,14 @@ def callback_query(call):
         bot.send_message(call.message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
         
     elif call.data == 'deposit':
-        text = f"💳 **حسابات الاستقبال لاستقبال الأموال الحقيقية:**\n\n{CCP_INFO}\n\n{BINANCE_INFO}\n\n⚠️ *بعد التحويل، أرسل صورة الوصل هنا في البوت ليتم إرسال إشعار فوري لإدارة العنابي!*"
+        text = f"💳 **حسابات الاستقبال للإدارة:**\n\n{CCP_INFO}\n\n{BINANCE_INFO}\n\n⚠️ *بعد التحويل، أرسل صورة الوصل هنا ليصل الإشعار فوراً للإدارة وتنفيذ طلبك!*"
         markup = telebot.types.InlineKeyboardMarkup()
         markup.add(telebot.types.InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu'))
         bot.answer_callback_query(call.id)
         bot.send_message(call.message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
         
     elif call.data == 'support':
-        text = f"📞 **الدعم الفني:**\n{SUPPORT_CONTACT}"
+        text = f"📞 **الدعم الفني والخدمات:**\n{SUPPORT_CONTACT}"
         markup = telebot.types.InlineKeyboardMarkup()
         markup.add(telebot.types.InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu'))
         bot.answer_callback_query(call.id)
@@ -185,20 +187,20 @@ def callback_query(call):
     elif call.data == 'main_menu':
         send_welcome(call.message)
 
-# استقبال صور إيصالات الدفع الحقيقي وتنبيهك أنت شخصياً لاستقبال الأموال
+# استقبال صور إيصالات الدفع الحقيقي وتنبيهك أنت شخصياً لاستلام الأموال
 @bot.message_handler(content_types=['photo'])
 def handle_receipt(message):
     user = message.from_user
     username = f"@{user.username}" if user.username else "بدون معرف"
     
-    bot.reply_to(message, "📥 **تم استلام صورة الوصل بنجاح!**\n⏳ *تم إرسال الإشعار فوراً إلى هاتف الإدارة (العنابي) لمراجعة الحساب وتنفيذ طلبك.*", parse_mode="Markdown")
+    bot.reply_to(message, "📥 **تم استلام صورة الوصل بنجاح!**\n⏳ *تم إرسال الإشعار فوراً إلى إدارة المنصة لمراجعة الحساب وتنفيذ الطلب.*", parse_mode="Markdown")
     
     if ADMIN_ID:
         admin_alert = (
-            f"💰 **تنبيه مالي هام: وصل دفع جديد!**\n\n"
+            f"💰 **تنبيه مالي جديد: طلب شحن وإيصال دفع!**\n\n"
             f"👤 **الزبون:** {user.first_name} ({username})\n"
             f"🆔 **الآيدي:** `{user.id}`\n\n"
-            f"🎯 *تفقد حسابك في CCP أو بينانس لتأكيد استلام الأموال وإضافة الرصيد للزبون!*"
+            f"🎯 *تفقد حسابك في CCP أو بينانس لتأكيد استلام الأموال وتنفيذ الطلب للزبون!*"
         )
         bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=admin_alert, parse_mode="Markdown")
 
@@ -206,5 +208,5 @@ def handle_receipt(message):
 if __name__ == '__main__':
     t = Thread(target=run_web)
     t.start()
-    print("Al-Annabi Ad Network Bot is running smoothly 24/7...")
+    print("Professional Digital Brokerage Bot is running smoothly 24/7...")
     bot.infinity_polling()
