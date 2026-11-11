@@ -23,7 +23,7 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "Real Ad-Revenue & Wallet Bot is active 24/7!"
+    return "Internal In-Bot Ad System is active 24/7!"
 
 def run_web():
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
@@ -39,7 +39,6 @@ def get_user(user_id):
             "last_date": today    # تاريخ آخر مشاهدة لتصفير العداد يومياً
         }
     
-    # تصفير عداد الإعلانات تلقائياً إذا دخل في يوم جديد
     if user_data[user_id]["last_date"] != today:
         user_data[user_id]["ads_watched"] = 0
         user_data[user_id]["last_date"] = today
@@ -54,7 +53,7 @@ def send_welcome(message):
     
     markup = telebot.types.InlineKeyboardMarkup(row_width=2)
     btn_wallet = telebot.types.InlineKeyboardButton(f"👛 محفظتي ({u['balance']} دج | {u['points']} نقطة)", callback_data='wallet')
-    btn_earn = telebot.types.InlineKeyboardButton("📺 مشاهدة إعلانات والربح (0/10)", callback_data='earn_ads')
+    btn_earn = telebot.types.InlineKeyboardButton("📺 إعلانات البوت الداخلية (+50 نقطة)", callback_data='earn_ads')
     btn_convert = telebot.types.InlineKeyboardButton("🔄 تحويل النقاط لرصيد مجاني", callback_data='convert_points')
     btn_games = telebot.types.InlineKeyboardButton("🎮 شحن Free Fire", callback_data='games')
     btn_deposit = telebot.types.InlineKeyboardButton("💳 شحن مباشر (CCP/بينانس)", callback_data='deposit')
@@ -64,12 +63,12 @@ def send_welcome(message):
     
     welcome_text = (
         f"🔥 **أهلاً بك يا {user.first_name} في منصة العنابي الذكية** 🚀\n\n"
-        "💎 *نظام حقيقي ومتكامل: شاهد حتى 10 إعلانات يومياً، اجمع النقاط، حولها إلى رصيد مجاني، وشحن لعبتك بدون أن تدفع شيئاً!*\n\n"
+        "💎 *تفاعل مع إعلانات البوت الداخلية يومياً، اجمع النقاط، حولها إلى رصيد مجاني، وشحن لعبتك دون مغادرة التيليجرام!*\n\n"
         "👇 **اختر ما يناسبك من القائمة أدناه:**"
     )
-    bot.send_message(message.chat.id, welcome_text, reply_markup=welcome_text and markup, parse_mode="Markdown")
+    bot.send_message(message.chat.id, welcome_text, reply_markup=markup, parse_mode="Markdown")
 
-# إدارة الأزرار التفاعلية بدقة وتصحيح كامل
+# إدارة الأزرار التفاعلية
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
     user_id = call.from_user.id
@@ -88,37 +87,42 @@ def callback_query(call):
     elif call.data == 'earn_ads':
         remaining = 10 - u["ads_watched"]
         text = (
-            f"📺 **قسم مشاهدة الإعلانات اليومية:**\n\n"
+            f"📺 **قسم إعلانات البوت الداخلية:**\n\n"
             f"• الإعلانات المشاهدة اليوم: `{u['ads_watched']} / 10`\n"
             f"• المتبقي لك اليوم: `{remaining} إعلانات`\n"
             f"• الربح لكل إعلان: `50 نقطة`\n\n"
-            f"👇 اضغط على الزر أدناه لمشاهدة الإعلان واكتساب نقاطك فوراً:"
+            f"📢 **الإعلان الحالي داخل المنصة:**\n"
+            f"━━━━━━━━━━━━━━━━━━━\n"
+            f"⭐ *عرض خاص: هل تريد شحن Free Fire أسرع؟ تابعه الآن عبر إعلانات العنابي واكسب رصيدك المجاني فوراً دون الخروج من البوت!*\n"
+            f"━━━━━━━━━━━━━━━━━━━\n\n"
+            f"👇 اقرأ الإعلان ثم اضغط زر التأكيد لاكتساب النقاط:"
         )
-        markup = telebot.types.InlineKeyboardMarkup()
+        markup = telebot.types.InlineKeyboardMarkup(row_width=1)
         if remaining > 0:
-            markup.add(telebot.types.InlineKeyboardButton("▶️ مشاهدة إعلان الآن (+50 نقطة)", callback_data='watch_one_ad'))
+            markup.add(telebot.types.InlineKeyboardButton("✅ تأكيد قراءة الإعلان واكتساب 50 نقطة", callback_data='confirm_ad'))
         else:
             markup.add(telebot.types.InlineKeyboardButton("⏳ لقد استهلكت الـ 10 إعلانات اليومية", callback_data='limit_reached'))
             
+        markup.add(telebot.types.InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu'))
         bot.answer_callback_query(call.id)
         bot.send_message(call.message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
         
-    elif call.data == 'watch_one_ad':
+    elif call.data == 'confirm_ad':
         if u["ads_watched"] < 10:
             u["ads_watched"] += 1
             u["points"] += 50
-            bot.answer_callback_query(call.id, "🎉 كفو! تمت مشاهدة الإعلان وإضافة 50 نقطة بنجاح.")
-            
-            # تحديث الواجهة برسالة جديدة
             remaining = 10 - u["ads_watched"]
+            
+            bot.answer_callback_query(call.id, "🎉 ممتاز! تم تأكيد الإعلان الداخلي وإضافة 50 نقطة لرصيدك.", show_alert=True)
+            
             text = (
-                f"✅ **تم احتساب الإعلان بنجاح!**\n"
+                f"✅ **تم تسجيل الإعلان الداخلي بنجاح!**\n"
                 f"⭐ نقاطك الحالية: `{u['points']} نقطة`\n"
                 f"📊 الإعلانات المتبقية لك اليوم: `{remaining} إعلانات`"
             )
             markup = telebot.types.InlineKeyboardMarkup()
             if remaining > 0:
-                markup.add(telebot.types.InlineKeyboardButton("▶️ مشاهدة إعلان آخر", callback_data='watch_one_ad'))
+                markup.add(telebot.types.InlineKeyboardButton("📺 عرض الإعلان الموالي", callback_data='earn_ads'))
             markup.add(telebot.types.InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu'))
             bot.send_message(call.message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
         else:
@@ -129,7 +133,6 @@ def callback_query(call):
         
     elif call.data == 'convert_points':
         if u["points"] >= 500:
-            # كل 500 نقطة تتحول إلى 100 دج رصيد
             converted_money = 100.0
             u["points"] -= 500
             u["balance"] += converted_money
@@ -144,8 +147,7 @@ def callback_query(call):
             text = (
                 f"⚠️ **عذراً، نقاطك غير كافية للتحويل.**\n"
                 f"رصيدك الحالي: `{u['points']} نقطة`\n"
-                f"تحتاج إلى `500 نقطة` على الأقل للتحويل (متبقي لك {needed} نقطة).\n"
-                f"شاهد الإعلانات يومياً لتجمعها مجاناً!"
+                f"تحتاج إلى `500 نقطة` على الأقل للتحويل (متبقي لك {needed} نقطة)."
             )
             bot.answer_callback_query(call.id, "النقاط غير كافية للتحويل", show_alert=True)
         bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
@@ -155,7 +157,7 @@ def callback_query(call):
             "🎮 **شحن Free Fire (عبر رصيد المحفظة أو CCP):**\n\n"
             "• 100 جوهرة ⟵ السعر المناسب\n"
             "• 310 جوهرة ⟵ الأكثر طلباً 🔥\n\n"
-            "🛒 إذا كان لديك رصيد كافٍ في محفظتك، أرسل الآيدي الخاص بك مع طلب الشحن للإدارة مباشرة."
+            "🛒 أرسل طلبك مع الآيدي الخاص بك معتمداً على رصيد محفظتك."
         )
         bot.answer_callback_query(call.id)
         bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
@@ -171,7 +173,6 @@ def callback_query(call):
         bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
         
     elif call.data == 'main_menu':
-        # العودة للقائمة الرئيسية
         send_welcome(call.message)
 
 # استقبال صور إيصالات الدفع الحقيقي لتعبئة رصيد المحفظة
@@ -195,5 +196,5 @@ def handle_receipt(message):
 if __name__ == '__main__':
     t = Thread(target=run_web)
     t.start()
-    print("Real Ad-System Bot is running smoothly 24/7...")
+    print("Internal In-Bot Ad System is running smoothly 24/7...")
     bot.infinity_polling()
