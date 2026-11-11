@@ -2,116 +2,198 @@ import os
 import telebot
 from flask import Flask
 from threading import Thread
+from datetime import datetime
 
 # توكن بوت التيليجرام الخاص بك
 TOKEN = '9181651284:AAFhCeulxRzQYuJ_VmLSy8E054kVZPNXkF8'
 bot = telebot.TeleBot(TOKEN)
 
-# معرف الإدارة الخاص بك (تستطيع استقبال إشعارات الطلبات هنا إن أردت لاحقاً)
-ADMIN_ID = "000000000"  # ضع آيدي الخاص بك هنا إن أردت
+# معرف الإدارة الخاص بك لاستقبال أموال الشحن الحقيقي
+ADMIN_ID = "8528044992" 
 
-CCP_INFO = "📌 **رقم حساب CCP / RIP:**\n`00799999001922271613`\n👤 **الاسم:** خدمة الوساطة الرقمية\n\n⚠️ *ملاحظة:* بعد التحويل، أرسل صورة الوصل هنا مع تحديد طلبك ليتم التنفيذ فوراً."
-BINANCE_INFO = "📌 **محفظة بينانس (USDT - TRC20):**\n`TM72iNjNBDRvUE46KCrK8z1d2PSeaWrVGT`\n\n⚠️ *ملاحظة:* أرسل لقطة شاشة للتحويل مع معرف الصفقة (TxID)."
-SUPPORT_CONTACT = "💬 **للتواصل المباشر والطلب السريع:**\nرئيس الخدمة: @hamzabox007-cmd"
+# قاعدة بيانات مؤقتة لتخزين بيانات ومحافظ الزبائن بدقة
+user_data = {}
 
-# إنشاء خادم ويب محلي لإبقاء البوت حياً على Render
+CCP_INFO = "📌 **رقم حساب CCP / RIP (شحن الرصيد المباشر):**\n`00799999001922271613`\n👤 **الاسم:** خدمة الوساطة الرقمية"
+BINANCE_INFO = "📌 **محفظة بينانس (USDT):**\n`TM72iNjNBDRvUE46KCrK8z1d2PSeaWrVGT`"
+SUPPORT_CONTACT = "💬 **للدعم والإدارة:** @hamzabox007-cmd"
+
+# خادم الويب لإبقاء البوت حياً 24/7 على Render
 app = Flask('')
 
 @app.route('/')
 def home():
-    return "Bot is active, autonomous and running 24/7!"
+    return "Real Ad-Revenue & Wallet Bot is active 24/7!"
 
 def run_web():
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
 
-# رسالة الترحيب الترويجية الذاتية
+# دالة لجلب بيانات المستخدم وضبطها اليومي
+def get_user(user_id):
+    today = datetime.now().strftime("%Y-%m-%d")
+    if user_id not in user_data:
+        user_data[user_id] = {
+            "balance": 0.0,       # الرصيد المالي بالدج
+            "points": 0.0,        # النقاط المتراكمة
+            "ads_watched": 0,     # عدد الإعلانات المشاهدة اليوم
+            "last_date": today    # تاريخ آخر مشاهدة لتصفير العداد يومياً
+        }
+    
+    # تصفير عداد الإعلانات تلقائياً إذا دخل في يوم جديد
+    if user_data[user_id]["last_date"] != today:
+        user_data[user_id]["ads_watched"] = 0
+        user_data[user_id]["last_date"] = today
+        
+    return user_data[user_id]
+
+# القائمة الرئيسية والترحيب
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    user_name = message.from_user.first_name or "عزيزنا العميل"
+    user = message.from_user
+    u = get_user(user.id)
+    
     markup = telebot.types.InlineKeyboardMarkup(row_width=2)
+    btn_wallet = telebot.types.InlineKeyboardButton(f"👛 محفظتي ({u['balance']} دج | {u['points']} نقطة)", callback_data='wallet')
+    btn_earn = telebot.types.InlineKeyboardButton("📺 مشاهدة إعلانات والربح (0/10)", callback_data='earn_ads')
+    btn_convert = telebot.types.InlineKeyboardButton("🔄 تحويل النقاط لرصيد مجاني", callback_data='convert_points')
+    btn_games = telebot.types.InlineKeyboardButton("🎮 شحن Free Fire", callback_data='games')
+    btn_deposit = telebot.types.InlineKeyboardButton("💳 شحن مباشر (CCP/بينانس)", callback_data='deposit')
+    btn_support = telebot.types.InlineKeyboardButton("📞 الدعم الفني", callback_data='support')
     
-    btn_games = telebot.types.InlineKeyboardButton("🎮 شحن الألعاب (Free Fire)", callback_data='games')
-    btn_usdt = telebot.types.InlineKeyboardButton("💱 صرافة USDT بأفضل سعر", callback_data='usdt')
-    btn_subs = telebot.types.InlineKeyboardButton("📺 اشتراكات رقمية (Netflix / IPTV)", callback_data='subs')
-    btn_pay = telebot.types.InlineKeyboardButton("💳 طرق الدفع (CCP & Binance)", callback_data='payment')
-    btn_support = telebot.types.InlineKeyboardButton("📞 الدعم الفني والاتصال", callback_data='support')
-    
-    markup.add(btn_games, btn_usdt, btn_subs, btn_pay, btn_support)
+    markup.add(btn_wallet, btn_earn, btn_convert, btn_games, btn_deposit, btn_support)
     
     welcome_text = (
-        f"🔥 **أهلاً بك يا {user_name} في منصة العنابي للخدمات الرقمية 24/7** 🚀\n\n"
-        "🤖 *أنا مساعدك الذكي والمستقل لإدارة وتلبية طلباتك بشكل آلي وسريع.*\n\n"
-        "✨ **خدماتنا المتاحة:**\n"
-        "⚡ شحن فوري للألعاب وعملات USDT.\n"
-        "🍿 اشتراكات ترفيهية مضمونة طيلة المدة.\n"
-        "🛡️ معاملات آمنة وموثوقة في السوق الجزائري.\n\n"
-        "👇 **اختر الخدمة المطلوبة من الأزرار أدناه:**"
+        f"🔥 **أهلاً بك يا {user.first_name} في منصة العنابي الذكية** 🚀\n\n"
+        "💎 *نظام حقيقي ومتكامل: شاهد حتى 10 إعلانات يومياً، اجمع النقاط، حولها إلى رصيد مجاني، وشحن لعبتك بدون أن تدفع شيئاً!*\n\n"
+        "👇 **اختر ما يناسبك من القائمة أدناه:**"
     )
-    bot.send_message(message.chat.id, welcome_text, reply_markup=markup, parse_mode="Markdown")
+    bot.send_message(message.chat.id, welcome_text, reply_markup=welcome_text and markup, parse_mode="Markdown")
 
-# الرد التلقائي عند إرسال صور أو وصلات الدفع (لكي يستقل البوت في التعامل مع الزبائن)
-@bot.message_handler(content_types=['photo'])
-def handle_docs(message):
-    reply_text = (
-        "📥 **تم استلام إيصال الدفع بنجاح!**\n\n"
-        "⏳ *البوت يقوم بتحويل طلبك إلى فريق الإدارة للمراجعة والتنفيذ الفوري.*\n"
-        "شكراً لثقتكم بخدماتنا، سيتم التواصل معك أو شحن طلبك في أقرب وقت."
-    )
-    bot.reply_to(message, reply_text, parse_mode="Markdown")
-
-# التعامل مع الأزرار التفاعلية
+# إدارة الأزرار التفاعلية بدقة وتصحيح كامل
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
-    if call.data == 'games':
+    user_id = call.from_user.id
+    u = get_user(user_id)
+    
+    if call.data == 'wallet':
         text = (
-            "🎮 **قسم شحن الألعاب (Free Fire & فري فاير):**\n\n"
-            "💎 **العروض المتوفرة حالياً:**\n"
-            "• 100 جوهرة\n"
-            "• 310 جوهرة (الأكثر طلباً 🔥)\n"
-            "• 520 جوهرة\n\n"
-            "🛒 **خطوات الطلب الذاتي:**\n"
-            "1. قم بتحويل المبلغ عبر CCP أو بينانس.\n"
-            "2. أرسل **صورة الإيصال (وصل الدفع)** هنا في البوت مباشرة مع كتابة الـ (ID) الخاص بك.\n"
-            "3. استلم جواهرك فوراً!"
+            f"👛 **محفظتك الشخصية:**\n\n"
+            f"💰 **الرصيد القابل للشحن:** `{u['balance']} دج`\n"
+            f"⭐ **النقاط المجمعة:** `{u['points']} نقطة`\n\n"
+            f"💡 *كل 500 نقطة = 100 دج رصيد مجاني في محفظتك!*"
         )
         bot.answer_callback_query(call.id)
         bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
         
-    elif call.data == 'usdt':
+    elif call.data == 'earn_ads':
+        remaining = 10 - u["ads_watched"]
         text = (
-            "💱 **قسم صرافة USDT الرقمية:**\n\n"
-            "📈 بيع وشراء العملات الرقمية بكل أمان وثقة.\n"
-            "• متوفر الدفع بالـ CCP / BaridiMob.\n"
-            "• أسعار تنافسية ومحدثة.\n\n"
-            "💬 للاتفاق الفوري، تواصل مع الإدارة عبر زر الدعم."
+            f"📺 **قسم مشاهدة الإعلانات اليومية:**\n\n"
+            f"• الإعلانات المشاهدة اليوم: `{u['ads_watched']} / 10`\n"
+            f"• المتبقي لك اليوم: `{remaining} إعلانات`\n"
+            f"• الربح لكل إعلان: `50 نقطة`\n\n"
+            f"👇 اضغط على الزر أدناه لمشاهدة الإعلان واكتساب نقاطك فوراً:"
+        )
+        markup = telebot.types.InlineKeyboardMarkup()
+        if remaining > 0:
+            markup.add(telebot.types.InlineKeyboardButton("▶️ مشاهدة إعلان الآن (+50 نقطة)", callback_data='watch_one_ad'))
+        else:
+            markup.add(telebot.types.InlineKeyboardButton("⏳ لقد استهلكت الـ 10 إعلانات اليومية", callback_data='limit_reached'))
+            
+        bot.answer_callback_query(call.id)
+        bot.send_message(call.message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
+        
+    elif call.data == 'watch_one_ad':
+        if u["ads_watched"] < 10:
+            u["ads_watched"] += 1
+            u["points"] += 50
+            bot.answer_callback_query(call.id, "🎉 كفو! تمت مشاهدة الإعلان وإضافة 50 نقطة بنجاح.")
+            
+            # تحديث الواجهة برسالة جديدة
+            remaining = 10 - u["ads_watched"]
+            text = (
+                f"✅ **تم احتساب الإعلان بنجاح!**\n"
+                f"⭐ نقاطك الحالية: `{u['points']} نقطة`\n"
+                f"📊 الإعلانات المتبقية لك اليوم: `{remaining} إعلانات`"
+            )
+            markup = telebot.types.InlineKeyboardMarkup()
+            if remaining > 0:
+                markup.add(telebot.types.InlineKeyboardButton("▶️ مشاهدة إعلان آخر", callback_data='watch_one_ad'))
+            markup.add(telebot.types.InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu'))
+            bot.send_message(call.message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
+        else:
+            bot.answer_callback_query(call.id, "⚠️ لقد وصلت لحد الإعلانات الأقصى اليوم (10/10). عُد غداً!", show_alert=True)
+            
+    elif call.data == 'limit_reached':
+        bot.answer_callback_query(call.id, "⚠️ لقد انهيت 10 إعلانات الخاصة بك لهذا اليوم. انتظر حتى الغد!", show_alert=True)
+        
+    elif call.data == 'convert_points':
+        if u["points"] >= 500:
+            # كل 500 نقطة تتحول إلى 100 دج رصيد
+            converted_money = 100.0
+            u["points"] -= 500
+            u["balance"] += converted_money
+            text = (
+                f"🎉 **تم التحويل بنجاح تام!**\n"
+                f"🔄 خصمنا `500 نقطة` وأضفنا `100 دج` إلى رصيدك المالي.\n"
+                f"💰 رصيدك المالي الجديد: `{u['balance']} دج`"
+            )
+            bot.answer_callback_query(call.id, "تم التحويل إلى رصيد بنجاح! 🚀")
+        else:
+            needed = 500 - u["points"]
+            text = (
+                f"⚠️ **عذراً، نقاطك غير كافية للتحويل.**\n"
+                f"رصيدك الحالي: `{u['points']} نقطة`\n"
+                f"تحتاج إلى `500 نقطة` على الأقل للتحويل (متبقي لك {needed} نقطة).\n"
+                f"شاهد الإعلانات يومياً لتجمعها مجاناً!"
+            )
+            bot.answer_callback_query(call.id, "النقاط غير كافية للتحويل", show_alert=True)
+        bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
+        
+    elif call.data == 'games':
+        text = (
+            "🎮 **شحن Free Fire (عبر رصيد المحفظة أو CCP):**\n\n"
+            "• 100 جوهرة ⟵ السعر المناسب\n"
+            "• 310 جوهرة ⟵ الأكثر طلباً 🔥\n\n"
+            "🛒 إذا كان لديك رصيد كافٍ في محفظتك، أرسل الآيدي الخاص بك مع طلب الشحن للإدارة مباشرة."
         )
         bot.answer_callback_query(call.id)
         bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
         
-    elif call.data == 'subs':
-        text = (
-            "📺 **قسم الاشتراكات الرقمية والترفيهية:**\n\n"
-            "🍿 **Netflix:** حسابات رسمية وضمان كامل.\n"
-            "📡 **IPTV:** اشتراكات سنوية لأقوى الباقات والقنوات بجودة عالية.\n\n"
-            "💳 أرسل إيصال الدفع واستلم معلومات الدخول في الحال!"
-        )
-        bot.answer_callback_query(call.id)
-        bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
-        
-    elif call.data == 'payment':
-        text = f"💳 **بيانات الدفع الرسمية المعتمدة:**\n\n{CCP_INFO}\n\n━━━━━━━━━━━━━━━\n\n{BINANCE_INFO}"
+    elif call.data == 'deposit':
+        text = f"💳 **شحن الرصيد المالي الحقيقي:**\n\n{CCP_INFO}\n\n{BINANCE_INFO}\n\n⚠️ *بعد التحويل، أرسل صورة الوصل هنا ليتم شحن محفظتك المالية فوراً!*"
         bot.answer_callback_query(call.id)
         bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
         
     elif call.data == 'support':
-        text = f"📞 **مركز الدعم والخدمة:**\n\n{SUPPORT_CONTACT}\n\nنحن في خدمتك على مدار الساعة."
+        text = f"📞 **الدعم الفني والإدارة:**\n{SUPPORT_CONTACT}"
         bot.answer_callback_query(call.id)
         bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
+        
+    elif call.data == 'main_menu':
+        # العودة للقائمة الرئيسية
+        send_welcome(call.message)
 
-# تشغيل النظام الآلي السحابي
+# استقبال صور إيصالات الدفع الحقيقي لتعبئة رصيد المحفظة
+@bot.message_handler(content_types=['photo'])
+def handle_receipt(message):
+    user = message.from_user
+    username = f"@{user.username}" if user.username else "بدون معرف"
+    
+    bot.reply_to(message, "📥 **تم استلام وصل التحويل المالي!**\n⏳ *جاري التحقق وشحن رصيد محفظتك الحقيقي فوراً.*", parse_mode="Markdown")
+    
+    if ADMIN_ID:
+        admin_alert = (
+            f"💰 **تنبيه مالي: طلب شحن محفظة جديد!**\n\n"
+            f"👤 **الزبون:** {user.first_name} ({username})\n"
+            f"🆔 **الآيدي:** `{user.id}`\n\n"
+            f"🎯 *تحقق من استلام الأموال في حسابك وقم بتحديث رصيد محفظته يدوياً!*"
+        )
+        bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=admin_alert, parse_mode="Markdown")
+
+# تشغيل البوت سحابياً 24/7
 if __name__ == '__main__':
     t = Thread(target=run_web)
     t.start()
-    print("Autonomous Bot is running 24/7...")
+    print("Real Ad-System Bot is running smoothly 24/7...")
     bot.infinity_polling()
-
